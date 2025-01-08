@@ -1,0 +1,32 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+# 1. Load the dataset
+df = pd.read_csv('sales_data.csv')  # Assume you have a sales CSV file
+
+# 2. Basic exploration
+print(df.head())  # Show first 5 rows of the dataset
+
+# 3. Calculate total revenue
+df['Revenue'] = df['Quantity'] * df['Price']  # Add a revenue column
+total_revenue = df['Revenue'].sum()  # Sum of all revenues
+print(f"Total Revenue: {total_revenue}")
+
+# 4. Average sales price
+avg_price = df['Price'].mean()  # Calculate average price
+print(f"Average Sale Price: {avg_price}")
+
+# 5. Find top-selling product
+top_product = df.groupby('Product')['Revenue'].sum().idxmax()  # Product with highest revenue
+print(f"Top-Selling Product: {top_product}")
+
+# 6. Monthly sales trend
+df['Order Date'] = pd.to_datetime(df['Order Date'])  # Convert to datetime
+df['Month'] = df['Order Date'].dt.month  # Extract month from order date
+monthly_sales = df.groupby('Month')['Revenue'].sum()  # Group sales by month
+monthly_sales.plot(kind='bar')
+plt.title('Monthly Sales Trend')
+plt.xlabel('Month')
+plt.ylabel('Revenue')
+plt.show()
