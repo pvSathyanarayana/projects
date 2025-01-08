@@ -1,0 +1,60 @@
+pip install transformers datasets sentencepiece streamlit pillow torchvision
+from transformers import CLIPProcessor, CLIPModel  
+from PIL import Image  
+
+# Load CLIP model and processor  
+model_name = "openai/clip-vit-base-patch32"  
+model = CLIPModel.from_pretrained(model_name)  
+processor = CLIPProcessor.from_pretrained(model_name)  
+
+# Load and process an image  
+image = Image.open("example_shirt.jpg")  
+inputs = processor(text=["shirt", "t-shirt"], images=image, return_tensors="pt", padding=True)  
+
+# Generate embeddings  
+outputs = model(**inputs)  
+image_features = outputs.image_embeds  
+text_features = outputs.text_embeds  
+
+print("Image Features:", image_features.shape)  
+print("Text Features:", text_features.shape)  
+from transformers import pipeline  
+
+# Load a text-generation pipeline  
+text_generator = pipeline("text-generation", model="gpt-3.5-turbo")  
+
+# Generate recommendations  
+query = "I need affordable sneakers for running"  
+response = text_generator(query, max_length=100, num_return_sequences=1)  
+print("Recommendations:", response[0]["generated_text"])  
+def multimodal_recommendation(image_path, user_query):  
+    # Process image  
+    image = Image.open(image_path)  
+    inputs = processor(text=[user_query], images=image, return_tensors="pt", padding=True)  
+    outputs = model(**inputs)  
+
+    # Extract features  
+    image_features = outputs.image_embeds  
+    text_features = outputs.text_embeds  
+
+    # Compute similarity  
+    similarity = (image_features @ text_features.T).softmax(dim=1)  
+    return similarity  
+
+query = "Find products similar to this shirt in red"  
+similarity_score = multimodal_recommendation("example_shirt.jpg", query)  
+print("Similarity Score:", similarity_score)  
+import streamlit as st  
+from PIL import Image  
+
+st.title("Multimodal Personal Shopping Assistant")  
+
+# Upload image  
+uploaded_file = st.file_uploader("Upload a product image", type=["jpg", "png"])  
+user_query = st.text_input("Enter your shopping preferences")  
+
+if uploaded_file and user_query:  
+    image = Image.open(uploaded_file)  
+    st.image(image, caption="Uploaded Image", use_column_width=True)  
+    similarity_score = multimodal_recommendation(uploaded_file, user_query)  
+    st.write(f"Recommendations for '{user_query}': {similarity_score}")  
