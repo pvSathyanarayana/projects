@@ -1,0 +1,52 @@
+# Import necessary libraries
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, accuracy_score
+from transformers import pipeline
+
+# Load the dataset (make sure to have a dataset with readmission data)
+data = pd.read_csv('hospital_readmission_data.csv')
+
+# Data Preprocessing
+# Handle missing values
+data.fillna('', inplace=True)
+
+# Feature extraction using an LLM
+def extract_features(text):
+    summarizer = pipeline("summarization")
+    summary = summarizer(text)
+    return summary[0]['summary_text']
+
+# Apply feature extraction on clinical notes
+data['summarized_notes'] = data['clinical_notes'].apply(extract_features)
+
+# Create target variable
+data['readmitted'] = data['readmitted'].apply(lambda x: 1 if x == 'Yes' else 0)
+
+# Train-Test Split
+X = data[['age', 'num_lab_procedures', 'summarized_notes']]
+y = data['readmitted']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Convert text to numerical features (e.g., using CountVectorizer or TF-IDF)
+from sklearn.feature_extraction.text import TfidfVectorizer
+vectorizer = TfidfVectorizer()
+X_train_notes = vectorizer.fit_transform(X_train['summarized_notes'])
+X_test_notes = vectorizer.transform(X_test['summarized_notes'])
+
+# Combine numerical features with text features
+X_train_combined = np.hstack((X_train[['age', 'num_lab_procedures']].values, X_train_notes.toarray()))
+X_test_combined = np.hstack((X_test[['age', 'num_lab_procedures']].values, X_test_notes.toarray()))
+
+# Model Training
+model = RandomForestClassifier(n_estimators=100)
+model.fit(X_train_combined, y_train)
+
+# Predictions
+y_pred = model.predict(X_test_combined)
+
+# Evaluation
+print(classification_report(y_test, y_pred))
+print(f'Accuracy: {accuracy_score(y_test, y_pred)}')
